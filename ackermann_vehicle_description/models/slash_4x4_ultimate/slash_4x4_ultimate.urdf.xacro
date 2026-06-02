@@ -1,6 +1,8 @@
-<?xml version="1.0" ?>
+<?xml version="1.0"?>
+<robot name="sputnik"
+       xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="slash_4x4_ultimate">
+  <!-- ================= PROPERTIES ================= -->
 
   <xacro:property name="vehicle_name" value="sputnik"/>
 
@@ -8,439 +10,113 @@
   <xacro:property name="wheelbase" value="0.324"/>
   <xacro:property name="half_width" value="0.196"/>
   <xacro:property name="half_track" value="0.148"/>
-  <xacro:property name="chassis_mass" value="1.68"/>
+  <xacro:property name="chassis_mass" value="5"/>
   <xacro:property name="tire_radius" value="0.05475"/>
   <xacro:property name="chassis_height_offset" value="0.02"/>
   <xacro:property name="tire_inner_rad" value="0.056"/>
   <xacro:property name="tire_width" value="0.0445"/>
   <xacro:property name="tire_mass" value="0.15"/>
-  <xacro:property name="max_steer_ang" value="0.34"/>
-  <xacro:property name="laser2axle" value="0.0476"/>
-  <xacro:property name="laser_rotation" value="-${pi}"/>
-  <xacro:property name="laser_height" value="0.1"/>
-  
-  <xacro:property name="counterweight_mass" value="${chassis_mass + 4*tire_mass}"/>
-  <xacro:property name="counterweight_com" value="${((chassis_mass*(tire_radius+chassis_height_offset)) + 4*tire_mass*tire_radius) / counterweight_mass}"/>
-  
-  <xacro:property name="track" value="${2*half_track}"/>
-  <xacro:property name="max_turn_radius" value="${wheelbase/sin(max_steer_ang)}"/>
-  <xacro:property name="inside_max_steer_ang" value="${atan(wheelbase/((wheelbase/tan(max_steer_ang))-half_track))}"/>
-  <xacro:property name="steer_traverse_time" value="0.25"/>
-  <xacro:property name="steer_joint_velocity_limit" value="${2*inside_max_steer_ang/steer_traverse_time}"/>
-  <xacro:property name="outside_max_steer_ang" value="${atan(wheelbase/((wheelbase/tan(max_steer_ang))+half_track))}"/>
-  <xacro:property name="linkage_ang" value="${atan(wheelbase/half_track)}"/>
-  <xacro:property name="A" value="${linkage_ang - inside_max_steer_ang}"/>
-  <xacro:property name="B" value="${linkage_ang + outside_max_steer_ang}"/>
-  <xacro:property name="quad_a" value="${1 - (1+cos(A+B))/(2*cos(linkage_ang)**2)}"/>
-  <xacro:property name="quad_b" value="${track*((1+cos(A+B))/(cos(linkage_ang)**2) - (cos(A)+cos(B))/cos(linkage_ang))}"/>
-  <xacro:property name="quad_c" value="${-track**2*(1 - (cos(A)+cos(B))/cos(linkage_ang) + (1+cos(A+B))/(2*cos(linkage_ang)**2))}"/>  
-  <xacro:property name="ackermann_bar_length" value="${(-quad_b+sqrt(quad_b**2 -4*quad_a*quad_c))/(2*quad_a)}"/>
-  <xacro:property name="sidebar_length" value="${(track-ackermann_bar_length)/(2*cos(linkage_ang))}"/>
-  <xacro:property name="bar_thickness" value="0.005"/>
-  
-  <xacro:property name="tire_friction" value="1000"/>
-  <xacro:property name="min_depth" value="0.02"/>
-  
-  <!-- Null inertial element. This is needed to make the model work with
-       Gazebo. -->
-  <xacro:macro name="null_inertial">
-    <inertial>3311.315862   Duration: 2.442862 / 7.601000      
-      <mass value="0.001"/>
-      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-    </inertial>
-  </xacro:macro>
-  
-  <!-- Inertia of a solid cuboid. Width is measured along the x axis, depth
-       along the y axis, and height along the z axis. -->
-  <xacro:macro name="solid_cuboid_inertial"
-               params="width depth height mass *origin">
-    <inertial>
-      <mass value="${mass}"/>
-      <inertia ixx="${mass * (depth * depth + height * height) / 12}"
-               ixy="0" ixz="0"
-               iyy="${mass * (width * width + height * height) / 12}"
-               iyz="0"
-               izz="${mass * (width * width + depth * depth) / 12}"/>
-    </inertial>
-  </xacro:macro>
-  
-  <!-- Inertia of a thick-walled cylindrical tube with open ends. Height is
-       measured along the z axis, which is the tube's axis. inner_rad and
-       outer_rad are the tube's inner and outer radii, respectively. -->
-  <xacro:macro name="thick_walled_tube_inertial"
-               params="inner_rad outer_rad height mass">
-    <inertial>
-      <mass value="${mass}"/>
-      <inertia ixx="${(1 / 12) * mass * (3 * (inner_rad * inner_rad +
-                    outer_rad * outer_rad) + height * height)}"
-               ixy="0" ixz="0"
-               iyy="${(1 / 12) * mass * (3 * (inner_rad * inner_rad +
-                    outer_rad * outer_rad) + height * height)}"
-               iyz="0"
-               izz="${mass * (inner_rad * inner_rad +
-                    outer_rad * outer_rad) / 2}"/>
-    </inertial>
-  </xacro:macro>
-  
-  <xacro:macro name="wheel_friction">
+
+  <!-- ================= BASE LINK ================= -->
+
+  <link name="base_link">
+
+    <visual>
+      <origin xyz="0 0 ${tire_radius + chassis_height_offset}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${wheelbase} ${2*half_width} ${chassis_depth}"/>
+      </geometry>
+      <material name="gray">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+      </material>
+    </visual>
+
     <collision>
-      <surface>
-        <friction>
-          <ode>
-            <mu>${tire_friction}</mu>
-            <mu2>${tire_friction}</mu2>
-            <fdir1>1 0 0</fdir1>
-            <slip1>0</slip1>
-            <slip2>0</slip2>
-          </ode>
-        </friction>
-        <contact>
-          <ode>
-            <min_depth>${min_depth}</min_depth>
-          </ode>
-        </contact>
-      </surface>
+      <origin xyz="0 0 ${tire_radius + chassis_height_offset}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${wheelbase} ${2*half_width} ${chassis_depth}"/>
+      </geometry>
     </collision>
-  </xacro:macro>
 
-  <link name="base">  
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="${wheelbase} ${2*(half_track - tire_width - 0.01)} ${chassis_depth}" />
-      </geometry>
-    </visual>
-<!--    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="${wheelbase} ${2*half_track - tire_radius} ${chassis_depth}" />
-      </geometry>
-    </collision>-->
-<!--    <xacro:solid_cuboid_inertial
-      width="${wheelbase}" depth="${2*(half_track - tire_width - 0.01)}" height="${chassis_depth}" mass="${chassis_mass}">
-      <origin/>
-    </xacro:solid_cuboid_inertial>-->
   </link>
-  <gazebo reference="base">
-    <visual name="visual">
-      <material>
-        <diffuse>0 0 1 1</diffuse>
-      </material>
-    </visual>
-    <gravity>true</gravity>
-  </gazebo>
-  
-  <link name="counterweight">  
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="${wheelbase} ${2*(half_track - tire_radius - 0.01)} ${chassis_depth}" />
-      </geometry>
-    </visual>
-    <!--<collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.03 0.03 0.001" />
-      </geometry>
-    </collision>-->
-    <xacro:solid_cuboid_inertial
-      width="${wheelbase}" depth="${2*(half_track - tire_radius - 0.01)}" height="${chassis_depth}" mass="${counterweight_mass}">
-      <origin/>
-    </xacro:solid_cuboid_inertial>
-  </link>
-  <gazebo reference="counterweight">
-    <visual name="visual">
-      <material>
-        <diffuse>0 0 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>true</gravity>
-  </gazebo>
-  <joint name="counterweight_joint" type="fixed" >
-    <parent link="base" />
-    <child link="counterweight" />
-    <origin xyz="0 0 -${tire_radius + chassis_height_offset + counterweight_com}" />
-  </joint>
 
-  <link name="front_left_bar">
-    <!--<visual>
-      <origin xyz="-${sidebar_length/2} 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="${sidebar_length} ${bar_thickness} ${bar_thickness}" />
-      </geometry>
-    </visual>-->
-    <xacro:null_inertial/>
-  </link>
-  <gazebo reference="front_left_bar">
-    <visual name="visual">
-      <material>
-        <diffuse>0 1 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>false</gravity>
-  </gazebo>  
-  <joint name="front_left_bar_joint" type="revolute" >
-    <limit lower="${-inside_max_steer_ang}" upper="${inside_max_steer_ang}" velocity="${steer_joint_velocity_limit}" />
-    <axis xyz="0 0 1" />
-    <parent link="base" />
-    <child link="front_left_bar" />
-    <origin xyz="${wheelbase/2} ${half_track} -${chassis_height_offset}" rpy="0 0 ${pi/2 - linkage_ang}" />
-  </joint>
+  <!-- ================= WHEEL MACRO ================= -->
 
-  <link name="front_right_bar">
-    <!--<visual>
-      <origin xyz="-${sidebar_length/2} 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="${sidebar_length} ${bar_thickness} ${bar_thickness}" />
-      </geometry>
-    </visual>-->
-    <xacro:null_inertial/>
-  </link>
-  <gazebo reference="front_right_bar">
-    <visual name="visual">
-      <material>
-        <diffuse>0 1 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>false</gravity>
-  </gazebo>  
-  <joint name="front_right_bar_joint" type="revolute" >
-    <limit lower="${-inside_max_steer_ang}" upper="${inside_max_steer_ang}" velocity="${steer_joint_velocity_limit}" />
-    <axis xyz="0 0 1" />
-    <parent link="base" />
-    <child link="front_right_bar" />
-    <origin xyz="${wheelbase/2} -${half_track} -${chassis_height_offset}" rpy="0 0 -${pi/2 - linkage_ang}" />
-  </joint>
-  
-  <gazebo>
-    <link name="ackermann_bar">
-      <gravity>false</gravity>
-      <pose>${wheelbase/2 - sidebar_length*sin(linkage_ang)} 0 -${chassis_height_offset} 0 0 0</pose>
-      <inertial>
-        <inertia>
-          <ixx>0.001</ixx>
-          <ixy>0</ixy>
-          <ixz>0</ixz>
-          <iyy>0.001</iyy>
-          <iyz>0</iyz>
-          <izz>0.001</izz>
-        </inertia>
-        <mass>0.001</mass>
-      </inertial>
-      <!--<visual>
+  <xacro:macro name="wheel" params="name x y">
+
+    <link name="${name}_wheel_link">
+
+      <visual>
+        <origin xyz="0 0 0" rpy="1.570796 0 0"/>
         <geometry>
-          <box>
-            <size>${bar_thickness} ${ackermann_bar_length} ${bar_thickness}</size>
-          </box>
+          <cylinder radius="${tire_radius}" length="${tire_width}"/>
         </geometry>
-      </visual>-->
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+        <geometry>
+          <cylinder radius="${tire_radius}" length="${tire_width}"/>
+        </geometry>
+      </collision>
+
     </link>
-  </gazebo>
-  <gazebo>
-    <joint name="left_ackermann_bar_joint" type="revolute">
-      <parent>front_left_bar</parent>
-      <child>ackermann_bar</child>
-      <pose>0 ${ackermann_bar_length/2} 0 0 0 0</pose>
-      <axis>
-        <xyz>0 0 1</xyz>
-      </axis>
-    </joint>
-  </gazebo>
-  <gazebo>
-    <joint name="right_ackermann_bar_joint" type="revolute">
-      <parent>front_right_bar</parent>
-      <child>ackermann_bar</child>
-      <pose>0 -${ackermann_bar_length/2} 0 0 0 0</pose>
-      <axis>
-        <xyz>0 0 1</xyz>
-      </axis>
-    </joint>
-  </gazebo>
 
-  <link name="front_left_wheel">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <cylinder radius="${tire_radius}" length="${tire_width}" />
-      </geometry>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="${tire_radius}" length="${tire_width}" />
-        </geometry>
-    </collision>
-    <xacro:thick_walled_tube_inertial
-      inner_rad="${tire_inner_rad}" outer_rad="${tire_radius}"
-      height="${tire_width}" mass="${tire_mass}"/>
-  </link>
-  <gazebo reference="front_left_wheel">
-    <xacro:wheel_friction/>
-    <visual name="visual">
-      <material>
-        <diffuse>0 0 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>true</gravity>
-  </gazebo>  
-  <joint name="front_left_wheel_joint" type="continuous" >
-    <axis xyz="0 0 -1" />
-    <parent link="front_left_bar" />
-    <child link="front_left_wheel" />
-    <origin xyz="0 0 0" rpy="${pi/2} 0 -${pi/2 - linkage_ang}" />
-  </joint>
-  
-  <link name="front_right_wheel">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <cylinder radius="${tire_radius}" length="${tire_width}" />
-      </geometry>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="${tire_radius}" length="${tire_width}" />
-        </geometry>
-    </collision>
-    <xacro:thick_walled_tube_inertial
-      inner_rad="${tire_inner_rad}" outer_rad="${tire_radius}"
-      height="${tire_width}" mass="${tire_mass}"/>
-  </link>
-  <gazebo reference="front_right_wheel">
-    <xacro:wheel_friction/>
-    <visual name="visual">
-      <material>
-        <diffuse>0 0 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>true</gravity>
-  </gazebo>  
-  <joint name="front_right_wheel_joint" type="continuous" >
-    <axis xyz="0 0 -1" />
-    <parent link="front_right_bar" />
-    <child link="front_right_wheel" />
-    <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2 - linkage_ang}" />
-  </joint>
-  
-  <link name="rear_left_wheel">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <cylinder radius="${tire_radius}" length="${tire_width}" />
-      </geometry>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="${tire_radius}" length="${tire_width}" />
-        </geometry>
-    </collision>
-    <xacro:thick_walled_tube_inertial
-      inner_rad="${tire_inner_rad}" outer_rad="${tire_radius}"
-      height="${tire_width}" mass="${tire_mass}"/>
-  </link>
-  <gazebo reference="rear_left_wheel">
-    <xacro:wheel_friction/>
-    <visual name="visual">
-      <material>
-        <diffuse>0 0 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>true</gravity>
-  </gazebo>  
-  <joint name="rear_left_wheel_joint" type="continuous" >
-    <axis xyz="0 0 -1 " />
-    <parent link="base" />
-    <child link="rear_left_wheel" />
-    <origin xyz="${-wheelbase/2} ${half_track} -${chassis_height_offset}" rpy="${pi/2} 0 0" />
-  </joint>
- 
-  <link name="rear_right_wheel">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <cylinder radius="${tire_radius}" length="${tire_width}" />
-      </geometry>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-        <geometry>
-          <cylinder radius="${tire_radius}" length="${tire_width}" />
-        </geometry>
-    </collision>
-    <xacro:thick_walled_tube_inertial
-      inner_rad="${tire_inner_rad}" outer_rad="${tire_radius}"
-      height="${tire_width}" mass="${tire_mass}"/>
-  </link>
-  <gazebo reference="rear_right_wheel">
-    <xacro:wheel_friction/>
-    <visual name="visual">
-      <material>
-        <diffuse>0 0 0 1</diffuse>
-      </material>
-    </visual>
-    <gravity>true</gravity>
-  </gazebo>  
-  <joint name="rear_right_wheel_joint" type="continuous" >
-    <axis xyz="0 0 -1" />
-    <parent link="base" />
-    <child link="rear_right_wheel" />
-    <origin xyz="${-wheelbase/2} ${-half_track} -${chassis_height_offset}" rpy="${pi/2} 0 0" />
-  </joint>
-  
-  <!-- Laser -->  
-  <gazebo>
-    <include>
-      <uri>model://rplidar_a3</uri>
-      <pose>${wheelbase/2 - laser2axle} 0 ${laser_height} 0 0 ${laser_rotation}</pose>
-    </include>
-    <joint name="base_to_laser" type="fixed">
-      <child>rplidar_a3::lidar_link</child>
-      <parent>base</parent>
+    <joint name="${name}_wheel_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${name}_wheel_link"/>
+      <origin xyz="${x} ${y} ${tire_radius}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
     </joint>
-  </gazebo>
-  
-  <gazebo>
-    <static>false</static>
-    <plugin
-      filename="gz-sim-ackermann-steering-system"
-      name="gz::sim::systems::AckermannSteering">
-      <steering_only>false</steering_only>
-      <use_actuator_msg>false</use_actuator_msg>
-      <left_joint>front_left_wheel_joint</left_joint>
-      <left_joint>rear_left_wheel_joint</left_joint>
-      <right_joint>front_right_wheel_joint</right_joint>
-      <right_joint>rear_right_wheel_joint</right_joint>
-      <left_steering_joint>front_left_bar_joint</left_steering_joint>
-      <right_steering_joint>front_right_bar_joint</right_steering_joint>
-      <wheel_separation>${track}</wheel_separation>
-      <kingpin_width>${track}</kingpin_width>
-      <wheelbase>${wheelbase}</wheelbase>
-      <steering_limit>${inside_max_steer_ang}</steering_limit>
-      <wheel_radius>${tire_radius}</wheel_radius>
-      <odom_publish_frequency>50</odom_publish_frequency>
-      <min_velocity>0</min_velocity>
-      <max_velocity>11</max_velocity>
-      <min_acceleration>0</min_acceleration>
-      <max_acceleration>50</max_acceleration>
-      <min_jerk>0</min_jerk>
-      <max_jerk>100</max_jerk>
-    </plugin>
-    <plugin
-      filename="gz-sim-joint-state-publisher-system"
-      name="gz::sim::systems::JointStatePublisher">
-      <topic>/model/${vehicle_name}/joint_state</topic>
-      <joint_name>
-    </plugin>
-    <plugin
-      filename="gz-sim-pose-publisher-system"
-      name="gz::sim::systems::PosePublisher">
-      <publish_model_pose>true</publish_model_pose>
-      <static_publisher>true</static_publisher>
-      <use_pose_vector_msg>true</use_pose_vector_msg>
-      <static_update_frequency>-1</static_update_frequency>
-    </plugin>
-  </gazebo>
-  
+
+  </xacro:macro>
+
+  <!-- ================= WHEELS ================= -->
+
+  <xacro:wheel
+    name="front_left"
+    x="${wheelbase/2}"
+    y="${half_track}"/>
+
+  <xacro:wheel
+    name="front_right"
+    x="${wheelbase/2}"
+    y="-${half_track}"/>
+
+  <xacro:wheel
+    name="rear_left"
+    x="-${wheelbase/2}"
+    y="${half_track}"/>
+
+  <xacro:wheel
+    name="rear_right"
+    x="-${wheelbase/2}"
+    y="-${half_track}"/>
+
+  <!-- ================= LASER ================= -->
+
+  <link name="laser_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.03" length="0.03"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser_link"/>
+    <origin xyz="0.0476 0 0.1" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================= IMU ================= -->
+
+  <link name="imu_link"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0.11 0 0" rpy="3.14159 0 0"/>
+  </joint>
+
 </robot>

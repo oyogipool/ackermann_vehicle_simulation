@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<robot name="slash_4x4_ultimate"
+       xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Base -->
+
+  <link name="base">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.324 0.187 0.01"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- Front axle center -->
+
+  <link name="front_axle_center"/>
+
+  <joint name="front_axle_center_joint" type="fixed">
+    <parent link="base"/>
+    <child link="front_axle_center"/>
+    <origin xyz="0.162 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- IMU -->
+
+  <link name="imu_link"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="front_axle_center"/>
+    <child link="imu_link"/>
+    <origin xyz="-0.11 0 0" rpy="3.141592653589793 0 0"/>
+  </joint>
+
+  <!-- Steering links -->
+
+  <link name="left_steer_link"/>
+
+  <joint name="left_steer_joint" type="revolute">
+    <parent link="base"/>
+    <child link="left_steer_link"/>
+    <origin xyz="0.162 0.148 -0.02" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.29560744145545503"
+           upper="0.3992510660039466"
+           effort="1000000"
+           velocity="3.194008528031573"/>
+  </joint>
+
+  <link name="right_steer_link"/>
+
+  <joint name="right_steer_joint" type="revolute">
+    <parent link="base"/>
+    <child link="right_steer_link"/>
+    <origin xyz="0.162 -0.148 -0.02" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.3992510660039466"
+           upper="0.29560744145545503"
+           effort="1000000"
+           velocity="3.194008528031573"/>
+  </joint>
+
+  <!-- Wheel macro -->
+
+  <xacro:macro name="wheel" params="name">
+
+    <link name="${name}">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <cylinder radius="0.05475"
+                    length="0.0445"/>
+        </geometry>
+        <material name="black">
+          <color rgba="0 0 0 1"/>
+        </material>
+      </visual>
+    </link>
+
+  </xacro:macro>
+
+  <xacro:wheel name="front_left_wheel"/>
+  <xacro:wheel name="front_right_wheel"/>
+  <xacro:wheel name="rear_left_wheel"/>
+  <xacro:wheel name="rear_right_wheel"/>
+
+  <joint name="front_left_wheel_joint" type="continuous">
+    <parent link="left_steer_link"/>
+    <child link="front_left_wheel"/>
+    <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 -1"/>
+  </joint>
+
+  <joint name="front_right_wheel_joint" type="continuous">
+    <parent link="right_steer_link"/>
+    <child link="front_right_wheel"/>
+    <origin xyz="0 0 0" rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 -1"/>
+  </joint>
+
+  <joint name="rear_left_wheel_joint" type="continuous">
+    <parent link="base"/>
+    <child link="rear_left_wheel"/>
+    <origin xyz="-0.162 0.148 -0.02"
+            rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 -1"/>
+  </joint>
+
+  <joint name="rear_right_wheel_joint" type="continuous">
+    <parent link="base"/>
+    <child link="rear_right_wheel"/>
+    <origin xyz="-0.162 -0.148 -0.02"
+            rpy="1.5707963267948966 0 0"/>
+    <axis xyz="0 0 -1"/>
+  </joint>
+
+  <!-- Lidar -->
+
+  <link name="lidar_link"/>
+
+  <joint name="base_to_laser_rviz" type="fixed">
+    <parent link="base"/>
+    <child link="lidar_link"/>
+    <origin xyz="0.1144 0 0.1"
+            rpy="0 0 0"/>
+  </joint>
+
+</robot>
